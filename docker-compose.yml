@@ -1,0 +1,38 @@
+#docker-compose.yml
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=ec2
+      - DEBUG=1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack-data:/var/lib/localstack"
+
+  terraform:
+    image: hashicorp/terraform:light
+    container_name: terraform
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    depends_on:
+      - localstack
+    entrypoint: >
+      /bin/sh -c "terraform init && terraform apply -auto-approve"
+
+  simulated-ec2:
+    build:
+      context: .
+      dockerfile: dockerfile
+    image: solomon11/todo-app
+    container_name: simulated-ec2
+    stdin_open: true
+    tty: true
+    ports:
+      - "5000:5000"
+    command: [ "python", "todo.py" ]
